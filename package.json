@@ -1,0 +1,23 @@
+{
+  "name": "wrap-and-unwrap",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "build": "cp src/index.html docs/index.html"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mahhov/wrap-and-unwrap.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mahhov/wrap-and-unwrap/issues"
+  },
+  "homepage": "https://github.com/mahhov/wrap-and-unwrap#readme"
+}
