@@ -61,62 +61,83 @@
 </div>
 
 <script>
-  let $ = document.getElementById.bind(document);
-  let widthInput = $('width');
-  let overlay = $('overlay');
-  let input = $('input');
-  let copyButton = $('copy');
-  let copyNotification = $('copy-notification');
+  class ViewHandle {
+    constructor() {
+      let $ = document.getElementById.bind(document);
+      this.widthInput = $('width');
+      this.overlay = $('overlay');
+      this.input = $('input');
+      this.copyButton = $('copy');
+      this.copyNotification = $('copy-notification');
+      this.initEventListeners();
 
-  let updateOverlayWidth = () =>
-      overlay.textContent = (' '.repeat(width()) + '\n').repeat(input.rows);
+      this.inputHistory = [['']];
+      this.inputHistoryIndex = 0;
 
-  let width = () => widthInput.value;
-  widthInput.addEventListener('input', updateOverlayWidth);
-
-  document.body.addEventListener('keydown', () => {
-    if (document.activeElement !== widthInput)
-      input.focus();
-  });
-
-  let setOutput = (text, selection) => {
-    input.value = text;
-    input.setSelectionRange(selection, selection);
-  };
-
-  let inputHistory = [['']];
-  let inputHistoryIndex = 0;
-  input.addEventListener('input', ({inputType}) => {
-    switch (inputType) {
-      case 'historyUndo':
-        setOutput(...inputHistory[--inputHistoryIndex]);
-        break;
-
-      case 'historyRedo':
-        setOutput(...inputHistory[++inputHistoryIndex]);
-        break;
-
-      default:
-        let selection = input.selectionStart;
-        let text = input.value
-            .replace(/([^\n ])\n([^\n])/g, '$1 $2')
-            .replace(new RegExp(`(.{1,${width()}})[ \\n]`, 'g'), '$1\n');
-        setOutput(text, selection);
-
-        inputHistory[++inputHistoryIndex] = [text, selection];
-        inputHistory.splice(inputHistoryIndex + 1);
+      this.updateOverlayWidth();
     }
-  });
 
-  let notify = (value, duration = 3000) => {
-    copyNotification.textContent = value;
-    setTimeout(() => copyNotification.textContent = '', duration);
-  };
-  copyButton.addEventListener('click', () => {
-    navigator.clipboard.writeText(input.value)
-        .then(() => notify('copied'))
-        .catch(e => notify('error copying: ' + e));
-  });
+    initEventListeners() {
+      this.widthInput.addEventListener('input', () => {
+        this.updateOverlayWidth();
+        this.wrap();
+      });
 
-  updateOverlayWidth();
+      document.body.addEventListener('keydown', () => {
+        if (document.activeElement !== this.widthInput)
+          this.input.focus();
+      });
+
+      this.input.addEventListener('input', this.wrap.bind(this));
+
+      this.copyButton.addEventListener('click', () =>
+          navigator.clipboard.writeText(this.input.value)
+              .then(() => this.copyNotify('copied'))
+              .catch(e => this.copyNotify('error copying: ' + e)));
+    }
+
+    updateOverlayWidth() {
+      this.overlay.textContent = (' '.repeat(this.width) + '\n').repeat(this.input.rows);
+    }
+
+    get width() {
+      return this.widthInput.value;
+    }
+
+    setOutput(text, selection) {
+      this.input.value = text;
+      this.input.setSelectionRange(selection, selection);
+    };
+
+
+    wrap({inputType} = {}) {
+      switch (inputType) {
+        case 'historyUndo':
+          this.setOutput(...inputHistory[--inputHistoryIndex]);
+          break;
+
+        case 'historyRedo':
+          this.setOutput(...inputHistory[++inputHistoryIndex]);
+          break;
+
+        default:
+          let selection = this.input.selectionStart;
+          let text = this.input.value
+              .replace(/([^\n ])\n([^\n])/g, '$1 $2')
+              .replace(new RegExp(`(.{1,${this.width}})[ \\n]`, 'g'), '$1\n');
+          this.setOutput(text, selection);
+
+          this.inputHistory[++this.inputHistoryIndex] = [text, selection];
+          this.inputHistory.splice(this.inputHistoryIndex + 1);
+      }
+    };
+
+    copyNotify(value, duration = 3000) {
+      this.copyNotification.textContent = value;
+      setTimeout(() => this.copyNotification.textContent = '', duration);
+    }
+  }
+
+  new ViewHandle();
+
 </script>
