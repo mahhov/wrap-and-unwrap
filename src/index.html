@@ -1,0 +1,101 @@
+<style>
+  body,
+  .center {
+    display: flex;
+    align-items: center;
+  }
+
+  .center {
+    flex-direction: column;
+    flex-grow: 1;
+  }
+
+  .container > div {
+    margin-top: 15px;
+  }
+
+  input {
+    margin-left: 15px;
+  }
+
+  textarea,
+  pre {
+    padding: 5px;
+    margin: 0;
+    font-size: 14px;
+  }
+
+  pre {
+    position: fixed;
+    border-right: 1px solid;
+    pointer-events: none;
+  }
+
+  button {
+    background: white;
+    border: black 1px solid;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #eee;
+  }
+
+  button:active {
+    background: white;
+  }
+</style>
+
+<div class="center">
+  <div class="container">
+    <div><label>width<input id="width" type="number" value="72" min="1"></label></div>
+    <div>
+      <pre id="overlay"></pre>
+      <textarea id="input" cols="100" rows="50" autofocus></textarea>
+    </div>
+    <div>
+      <button id="copy" accesskey="c">Copy [alt+c]</button>
+      <div id="copy-notification"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let $ = document.getElementById.bind(document);
+  let widthInput = $('width');
+  let overlay = $('overlay');
+  let input = $('input');
+  let copyButton = $('copy');
+  let copyNotification = $('copy-notification');
+
+  let updateOverlayWidth = () =>
+      overlay.textContent = (' '.repeat(width()) + '\n').repeat(input.rows);
+
+  let width = () => widthInput.value;
+  widthInput.addEventListener('input', updateOverlayWidth);
+
+  document.body.addEventListener('keydown', () => {
+    if (document.activeElement !== widthInput)
+      input.focus();
+  });
+
+  document.body.addEventListener('input', () => {
+    let selection = input.selectionStart;
+    input.value = input.value
+        .replace(/([^\n   ])\n([^\n])/g, '$1 $2')
+        .replace(new RegExp(`(.{1,${width()}})[ \\n]`, 'g'), '$1\n');
+    input.setSelectionRange(selection, selection)
+  });
+
+  copyButton.addEventListener('click', () => {
+    let notify = (value, duration = 3000) => {
+      copyNotification.textContent = value;
+      setTimeout(() => copyNotification.textContent = '', duration);
+    };
+    navigator.clipboard.writeText(input.value)
+        .then(() => notify('copied'))
+        .catch(e => notify('error copying: ' + e));
+  });
+
+  updateOverlayWidth();
+</script>
