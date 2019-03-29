@@ -79,19 +79,40 @@
       input.focus();
   });
 
-  document.body.addEventListener('input', () => {
-    let selection = input.selectionStart;
-    input.value = input.value
-        .replace(/([^\n   ])\n([^\n])/g, '$1 $2')
-        .replace(new RegExp(`(.{1,${width()}})[ \\n]`, 'g'), '$1\n');
-    input.setSelectionRange(selection, selection)
+  let setOutput = (text, selection) => {
+    input.value = text;
+    input.setSelectionRange(selection, selection);
+  };
+
+  let inputHistory = [['']];
+  let inputHistoryIndex = 0;
+  input.addEventListener('input', ({inputType}) => {
+    switch (inputType) {
+      case 'historyUndo':
+        setOutput(...inputHistory[--inputHistoryIndex]);
+        break;
+
+      case 'historyRedo':
+        setOutput(...inputHistory[++inputHistoryIndex]);
+        break;
+
+      default:
+        let selection = input.selectionStart;
+        let text = input.value
+            .replace(/([^\n ])\n([^\n])/g, '$1 $2')
+            .replace(new RegExp(`(.{1,${width()}})[ \\n]`, 'g'), '$1\n');
+        setOutput(text, selection);
+
+        inputHistory[++inputHistoryIndex] = [text, selection];
+        inputHistory.splice(inputHistoryIndex + 1);
+    }
   });
 
+  let notify = (value, duration = 3000) => {
+    copyNotification.textContent = value;
+    setTimeout(() => copyNotification.textContent = '', duration);
+  };
   copyButton.addEventListener('click', () => {
-    let notify = (value, duration = 3000) => {
-      copyNotification.textContent = value;
-      setTimeout(() => copyNotification.textContent = '', duration);
-    };
     navigator.clipboard.writeText(input.value)
         .then(() => notify('copied'))
         .catch(e => notify('error copying: ' + e));
