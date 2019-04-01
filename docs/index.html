@@ -88,7 +88,6 @@
       this.widthInput.addEventListener('input', () => {
         this.updateOverlayWidth();
         this.wrapAndSetOutput();
-        let [text, selection] = this.wrapAndSetOutput();
         this.saveLocalStorage();
       });
 
@@ -139,15 +138,14 @@
     }
 
     wrap(text) {
-       // do not call this, call wrapAndSetOutput instead
+      // do not call this, call wrapAndSetOutput instead
       return text
           .replace(/([^\n ])\n([^\n])/g, '$1 $2')
-          .replace(new RegExp(`(.{1,${this.width}})[ \\n]`, 'g'), '$1\n');
-
+          .replace(new RegExp(`(.{1,${this.width}})([ \\n]|$)`, 'g'), '$1\n');
     }
 
     setOutput(text, selection) {
-       // do not call this, call wrapAndSetOutput instead
+      // do not call this, call wrapAndSetOutput instead
       this.input.value = text;
       this.input.setSelectionRange(selection, selection);
     }
