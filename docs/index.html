@@ -121,6 +121,11 @@
       return this.widthInput.value;
     }
 
+    set width(value) {
+      this.widthInput.value = value;
+      this.updateOverlayWidth();
+    }
+
     setOutput(text, selection) {
       this.input.value = text;
       this.input.setSelectionRange(selection, selection);
@@ -162,9 +167,9 @@
     }
 
     loadLocalStorage() {
-      if (localStorage.getItem('history'))
+      if (localStorage.getItem('data'))
         try {
-          ({inputHistory: this.inputHistory, inputHistoryIndex: this.inputHistoryIndex} = JSON.parse(localStorage.getItem('history')));
+          ({width: this.width, inputHistory: this.inputHistory, inputHistoryIndex: this.inputHistoryIndex} = JSON.parse(localStorage.getItem('data')));
           this.setOutput(...this.inputHistory[this.inputHistoryIndex]);
         } catch (e) {
           console.error('unable to parse persisted input:', e);
@@ -172,7 +177,7 @@
     }
 
     saveLocalStorage() {
-      localStorage.setItem('history', JSON.stringify({inputHistory: this.inputHistory, inputHistoryIndex: this.inputHistoryIndex}));
+      localStorage.setItem('data', JSON.stringify({width: this.width, inputHistory: this.inputHistory, inputHistoryIndex: this.inputHistoryIndex}));
     }
   }
 
