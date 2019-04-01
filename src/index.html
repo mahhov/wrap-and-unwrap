@@ -117,11 +117,13 @@
     wrap(inputType) {
       switch (inputType) {
         case 'historyUndo':
-          this.setOutput(...this.inputHistory[--this.inputHistoryIndex]);
+          this.inputHistoryIndex = Math.max(this.inputHistoryIndex - 1, 0);
+          this.setOutput(...this.inputHistory[this.inputHistoryIndex]);
           break;
 
         case 'historyRedo':
-          this.setOutput(...this.inputHistory[++this.inputHistoryIndex]);
+          this.inputHistoryIndex = Math.min(this.inputHistoryIndex + 1, this.inputHistory.length - 1);
+          this.setOutput(...this.inputHistory[this.inputHistoryIndex]);
           break;
 
         default:
