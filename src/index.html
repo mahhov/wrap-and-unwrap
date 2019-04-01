@@ -87,7 +87,9 @@
     initEventListeners() {
       this.widthInput.addEventListener('input', () => {
         this.updateOverlayWidth();
-        this.wrap();
+        this.wrapAndSetOutput();
+        let [text, selection] = this.wrapAndSetOutput();
+        this.saveLocalStorage();
       });
 
       document.body.addEventListener('keydown', ev => {
@@ -105,7 +107,10 @@
         }
       });
 
-      this.input.addEventListener('input', this.wrap.bind(this));
+      this.input.addEventListener('input', () => {
+        this.addHistory(...this.wrapAndSetOutput());
+        this.saveLocalStorage();
+      });
 
       this.copyButton.addEventListener('click', () =>
           navigator.clipboard.writeText(this.input.value)
@@ -126,29 +131,35 @@
       this.updateOverlayWidth();
     }
 
+    wrapAndSetOutput(text = this.input.value) {
+      text = this.wrap(text);
+      let selection = this.input.selectionStart;
+      this.setOutput(text, selection);
+      return [text, selection];
+    }
+
+    wrap(text) {
+       // do not call this, call wrapAndSetOutput instead
+      return text
+          .replace(/([^\n ])\n([^\n])/g, '$1 $2')
+          .replace(new RegExp(`(.{1,${this.width}})[ \\n]`, 'g'), '$1\n');
+
+    }
+
     setOutput(text, selection) {
+       // do not call this, call wrapAndSetOutput instead
       this.input.value = text;
       this.input.setSelectionRange(selection, selection);
     }
 
-    wrap() {
-      let selection = this.input.selectionStart;
-      let text = this.input.value
-          .replace(/([^\n ])\n([^\n])/g, '$1 $2')
-          .replace(new RegExp(`(.{1,${this.width}})[ \\n]`, 'g'), '$1\n');
-      this.setOutput(text, selection);
-      this.addHistory(text, selection);
-      this.saveLocalStorage();
-    }
-
     undoHistory() {
       this.inputHistoryIndex = Math.max(this.inputHistoryIndex - 1, 0);
-      this.setOutput(...this.inputHistory[this.inputHistoryIndex]);
+      this.wrapAndSetOutput(...this.inputHistory[this.inputHistoryIndex]);
     }
 
     redoHistory() {
       this.inputHistoryIndex = Math.min(this.inputHistoryIndex + 1, this.inputHistory.length - 1);
-      this.setOutput(...this.inputHistory[this.inputHistoryIndex]);
+      this.wrapAndSetOutput(...this.inputHistory[this.inputHistoryIndex]);
     }
 
     addHistory(text, selection) {
@@ -170,7 +181,7 @@
       if (localStorage.getItem('data'))
         try {
           ({width: this.width, inputHistory: this.inputHistory, inputHistoryIndex: this.inputHistoryIndex} = JSON.parse(localStorage.getItem('data')));
-          this.setOutput(...this.inputHistory[this.inputHistoryIndex]);
+          this.wrapAndSetOutput(...this.inputHistory[this.inputHistoryIndex]);
         } catch (e) {
           console.error('unable to parse persisted input:', e);
         }
