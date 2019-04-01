@@ -74,6 +74,8 @@
       this.inputHistory = [['']];
       this.inputHistoryIndex = 0;
 
+      this.loadLocalStorage();
+
       this.updateOverlayWidth();
     }
 
@@ -83,12 +85,15 @@
         this.wrap();
       });
 
-      document.body.addEventListener('keydown', () => {
+      document.body.addEventListener('keydown', ({ctrlKey, shiftKey, code}) => {
         if (document.activeElement !== this.widthInput)
           this.input.focus();
+
+        if (ctrlKey && (code === 'KeyZ' || code === 'KeyY'))
+          this.wrap(code === 'KeyY' || shiftKey ? 'historyRedo' : 'historyUndo');
       });
 
-      this.input.addEventListener('input', this.wrap.bind(this));
+      this.input.addEventListener('input', ({inputType}) => this.wrap(inputType));
 
       this.copyButton.addEventListener('click', () =>
           navigator.clipboard.writeText(this.input.value)
@@ -107,17 +112,16 @@
     setOutput(text, selection) {
       this.input.value = text;
       this.input.setSelectionRange(selection, selection);
-    };
+    }
 
-
-    wrap({inputType} = {}) {
+    wrap(inputType) {
       switch (inputType) {
         case 'historyUndo':
-          this.setOutput(...inputHistory[--inputHistoryIndex]);
+          this.setOutput(...this.inputHistory[--this.inputHistoryIndex]);
           break;
 
         case 'historyRedo':
-          this.setOutput(...inputHistory[++inputHistoryIndex]);
+          this.setOutput(...this.inputHistory[++this.inputHistoryIndex]);
           break;
 
         default:
@@ -130,11 +134,27 @@
           this.inputHistory[++this.inputHistoryIndex] = [text, selection];
           this.inputHistory.splice(this.inputHistoryIndex + 1);
       }
-    };
+
+      this.saveLocalStorage();
+    }
 
     copyNotify(value, duration = 3000) {
       this.copyNotification.textContent = value;
       setTimeout(() => this.copyNotification.textContent = '', duration);
+    }
+
+    loadLocalStorage() {
+      if (localStorage.getItem('history'))
+        try {
+          ({inputHistory: this.inputHistory, inputHistoryIndex: this.inputHistoryIndex} = JSON.parse(localStorage.getItem('history')));
+          this.setOutput(...this.inputHistory[this.inputHistoryIndex]);
+        } catch (e) {
+          console.error('unable to parse persisted input:', e);
+        }
+    }
+
+    saveLocalStorage() {
+      localStorage.setItem('history', JSON.stringify({inputHistory: this.inputHistory, inputHistoryIndex: this.inputHistoryIndex}));
     }
   }
 
