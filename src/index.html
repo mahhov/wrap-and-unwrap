@@ -130,9 +130,9 @@
       this.updateOverlayWidth();
     }
 
-    wrapAndSetOutput(text = this.input.value) {
+    wrapAndSetOutput(text = this.input.value, selection) {
       text = this.wrap(text);
-      let selection = this.input.selectionStart;
+      selection = selection || this.input.selectionStart;
       this.setOutput(text, selection);
       return [text, selection];
     }
