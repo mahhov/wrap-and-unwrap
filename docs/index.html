@@ -140,7 +140,7 @@
     wrap(text) {
       // do not call this, call wrapAndSetOutput instead
       return text
-          .replace(/([^\n ])\n([^\n])/g, '$1 $2')
+          .replace(/([^\n ])\n([^\n -])/g, '$1 $2')
           .replace(new RegExp(`(.{1,${this.width}})([ \\n]|$)`, 'g'), '$1\n');
     }
 
@@ -178,7 +178,11 @@
     loadLocalStorage() {
       if (localStorage.getItem('data'))
         try {
-          ({width: this.width, inputHistory: this.inputHistory, inputHistoryIndex: this.inputHistoryIndex} = JSON.parse(localStorage.getItem('data')));
+          ({
+            width: this.width,
+            inputHistory: this.inputHistory,
+            inputHistoryIndex: this.inputHistoryIndex
+          } = JSON.parse(localStorage.getItem('data')));
           this.wrapAndSetOutput(...this.inputHistory[this.inputHistoryIndex]);
         } catch (e) {
           console.error('unable to parse persisted input:', e);
@@ -186,7 +190,11 @@
     }
 
     saveLocalStorage() {
-      localStorage.setItem('data', JSON.stringify({width: this.width, inputHistory: this.inputHistory, inputHistoryIndex: this.inputHistoryIndex}));
+      localStorage.setItem('data', JSON.stringify({
+        width: this.width,
+        inputHistory: this.inputHistory,
+        inputHistoryIndex: this.inputHistoryIndex
+      }));
     }
   }
 
