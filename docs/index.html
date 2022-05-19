@@ -1,4 +1,33 @@
 <style>
+  * {
+    color: #eee;
+  }
+
+  body {
+    background: black;
+  }
+
+  input, textarea, button {
+    background: #111;
+  }
+
+  button:hover {
+    background: #333;
+  }
+
+  input, textarea, button {
+    border: 1px solid #666;
+  }
+
+  pre {
+    border-right: 1px solid #666;
+  }
+
+  :focus {
+    outline: 0;
+    border: 1px solid white;
+  }
+
   body,
   .center {
     display: flex;
@@ -32,23 +61,13 @@
 
   pre {
     position: fixed;
-    border-right: 1px solid;
     pointer-events: none;
   }
 
   button {
-    background: white;
-    border: black 1px solid;
     cursor: pointer;
   }
 
-  button:hover {
-    background: #eee;
-  }
-
-  button:active {
-    background: white;
-  }
 </style>
 
 <div class="center">
