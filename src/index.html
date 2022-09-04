@@ -1,222 +1,319 @@
 <style>
-  * {
-    color: #eee;
-  }
+	* {
+		color: #eee;
+	}
 
-  body {
-    background: black;
-  }
+	body {
+		background: black;
+	}
 
-  input, textarea, button {
-    background: #111;
-  }
+	input, textarea, button {
+		background: #111;
+	}
 
-  button:hover {
-    background: #333;
-  }
+	button:hover {
+		background: #333;
+	}
 
-  input, textarea, button {
-    border: 1px solid #666;
-  }
+	input, textarea, button {
+		border: 1px solid #666;
+	}
 
-  pre {
-    border-right: 1px solid #666;
-  }
+	pre {
+		border-right: 1px solid #666;
+	}
 
-  :focus {
-    outline: 0;
-    border: 1px solid white;
-  }
+	:focus {
+		outline: 0;
+		border: 1px solid white;
+	}
 
-  body,
-  .center {
-    display: flex;
-    align-items: center;
-  }
+	body,
+	.center {
+		display: flex;
+		align-items: center;
+	}
 
-  .center {
-    flex-direction: column;
-    flex-grow: 1;
-  }
+	.center {
+		flex-direction: column;
+		flex-grow: 1;
+	}
 
-  .container > div {
-    margin-top: 15px;
-  }
+	.container > div {
+		margin-top: 15px;
+	}
 
-  input {
-    margin-left: 15px;
-  }
+	input {
+		margin-left: 15px;
+	}
 
-  textarea,
-  pre {
-    padding: 5px;
-    margin: 0;
-    font-size: 14px;
-  }
+	textarea,
+	pre {
+		padding: 5px;
+		margin: 0;
+		font-size: 14px;
+	}
 
-  textarea {
-    white-space: nowrap;
-    overflow: auto;
-  }
+	textarea {
+		white-space: nowrap;
+		overflow: auto;
+	}
 
-  pre {
-    position: fixed;
-    pointer-events: none;
-  }
+	pre {
+		position: fixed;
+		pointer-events: none;
+	}
 
-  button {
-    cursor: pointer;
-  }
+	button {
+		cursor: pointer;
+	}
 
 </style>
 
 <div class="center">
-  <div class="container">
-    <div><label>width<input id="width" type="number" value="72" min="1"></label></div>
-    <div>
-      <pre id="overlay"></pre>
-      <textarea id="input" cols="100" rows="50" autofocus></textarea>
-    </div>
-    <div>
-      <button id="copy" accesskey="c">Copy [alt+c]</button>
-      <div id="copy-notification"></div>
-    </div>
-  </div>
+	<div class="container">
+		<div><label>width<input id="width" type="number" value="72" min="1"></label></div>
+		<div>
+			<pre id="overlay"></pre>
+			<textarea id="input" cols="100" rows="50" autofocus></textarea>
+		</div>
+		<div>
+			<button id="copy" accesskey="c">Copy [alt+c]</button>
+			<div id="copy-notification"></div>
+		</div>
+	</div>
 </div>
 
 <script>
-  class ViewHandle {
-    constructor() {
-      let $ = document.getElementById.bind(document);
-      this.widthInput = $('width');
-      this.overlay = $('overlay');
-      this.input = $('input');
-      this.copyButton = $('copy');
-      this.copyNotification = $('copy-notification');
-      this.initEventListeners();
+	class Token {
+		type;
+		value;
 
-      this.inputHistory = [['']];
-      this.inputHistoryIndex = 0;
+		static types = {
+			SECTION_BREAK: 0,
+			BULLET: 1,
+			LINE_BREAK: 2,
+			WORD_BREAK: 3,
+			WORD: 4,
+		};
 
-      this.loadLocalStorage();
+		constructor(type, value) {
+			this.type = type;
+			this.value = value;
+		}
 
-      this.updateOverlayWidth();
-    }
+		get indent() {
+			let lines = this.value.split('\n');
+			return lines[lines.length - 1].length;
+		}
+	}
 
-    initEventListeners() {
-      this.widthInput.addEventListener('input', () => {
-        this.updateOverlayWidth();
-        this.wrapAndSetOutput();
-        this.saveLocalStorage();
-      });
+	let lastLineLength = text => {
+		let lines = text.split('\n');
+		return lines[lines.length - 1].length;
+	};
 
-      document.body.addEventListener('keydown', ev => {
-        if (document.activeElement !== this.widthInput)
-          this.input.focus();
+	class ViewHandle {
+		constructor() {
+			let $ = document.getElementById.bind(document);
+			this.widthInput = $('width');
+			this.overlay = $('overlay');
+			this.input = $('input');
+			this.copyButton = $('copy');
+			this.copyNotification = $('copy-notification');
+			this.initEventListeners();
 
-        let {ctrlKey, shiftKey, code} = ev;
-        if (ctrlKey && (code === 'KeyZ' || code === 'KeyY')) {
-          if (code === 'KeyY' || shiftKey)
-            this.redoHistory();
-          else
-            this.undoHistory();
-          ev.preventDefault();
-          this.saveLocalStorage();
-        }
-      });
+			this.inputHistory = [['']];
+			this.inputHistoryIndex = 0;
 
-      this.input.addEventListener('input', () => {
-        this.addHistory(...this.wrapAndSetOutput());
-        this.saveLocalStorage();
-      });
+			this.loadLocalStorage();
 
-      this.copyButton.addEventListener('click', () =>
-          navigator.clipboard.writeText(this.input.value)
-              .then(() => this.copyNotify('copied'))
-              .catch(e => this.copyNotify('error copying: ' + e)));
-    }
+			this.updateOverlayWidth();
+		}
 
-    updateOverlayWidth() {
-      this.overlay.textContent = (' '.repeat(this.width) + '\n').repeat(this.input.rows);
-    }
+		initEventListeners() {
+			this.widthInput.addEventListener('input', () => {
+				this.updateOverlayWidth();
+				this.wrapAndSetOutput();
+				this.saveLocalStorage();
+			});
 
-    get width() {
-      return this.widthInput.value;
-    }
+			document.body.addEventListener('keydown', ev => {
+				if (document.activeElement !== this.widthInput)
+					this.input.focus();
 
-    set width(value) {
-      this.widthInput.value = value;
-      this.updateOverlayWidth();
-    }
+				let {ctrlKey, shiftKey, code} = ev;
+				if (ctrlKey && (code === 'KeyZ' || code === 'KeyY')) {
+					if (code === 'KeyY' || shiftKey)
+						this.redoHistory();
+					else
+						this.undoHistory();
+					ev.preventDefault();
+					this.saveLocalStorage();
+				}
+			});
 
-    wrapAndSetOutput(text = this.input.value, selection) {
-      text = this.wrap(text);
-      selection = selection || this.input.selectionStart;
-      this.setOutput(text, selection);
-      return [text, selection];
-    }
+			this.input.addEventListener('input', () => {
+				this.addHistory(...this.wrapAndSetOutput());
+				this.saveLocalStorage();
+			});
 
-    wrap(text) {
-      // do not call this, call wrapAndSetOutput instead
-      return text
-          .replace(/([^\n ])\n([^\n -])/g, '$1 $2')
-          .replace(new RegExp(`(.{1,${this.width}})([ \\n]|$)`, 'g'), '$1\n');
-    }
+			this.copyButton.addEventListener('click', () =>
+				navigator.clipboard.writeText(this.input.value)
+					.then(() => this.copyNotify('copied'))
+					.catch(e => this.copyNotify('error copying: ' + e)));
+		}
 
-    setOutput(text, selection) {
-      // do not call this, call wrapAndSetOutput instead
-      this.input.value = text;
-      this.input.setSelectionRange(selection, selection);
-    }
+		updateOverlayWidth() {
+			this.overlay.textContent = (' '.repeat(this.width) + '\n').repeat(this.input.rows);
+		}
 
-    undoHistory() {
-      this.inputHistoryIndex = Math.max(this.inputHistoryIndex - 1, 0);
-      this.wrapAndSetOutput(...this.inputHistory[this.inputHistoryIndex]);
-    }
+		get width() {
+			return this.widthInput.value;
+		}
 
-    redoHistory() {
-      this.inputHistoryIndex = Math.min(this.inputHistoryIndex + 1, this.inputHistory.length - 1);
-      this.wrapAndSetOutput(...this.inputHistory[this.inputHistoryIndex]);
-    }
+		set width(value) {
+			this.widthInput.value = value;
+			this.updateOverlayWidth();
+		}
 
-    addHistory(text, selection) {
-      const MAX_HISTORY_LENGTH = 300;
-      this.inputHistory[++this.inputHistoryIndex] = [text, selection];
-      this.inputHistory.splice(this.inputHistoryIndex + 1);
-      if (this.inputHistory.length > MAX_HISTORY_LENGTH) {
-        this.inputHistory = this.inputHistory.splice(this.inputHistory.length - MAX_HISTORY_LENGTH);
-        this.inputHistoryIndex = this.inputHistory.length - 1;
-      }
-    }
+		wrapAndSetOutput(text = this.input.value, selection) {
+			selection = selection || this.input.selectionStart;
+			[text, selection] = this.wrap(text, selection);
+			this.setOutput(text, selection);
+			return [text, selection];
+		}
 
-    copyNotify(value, duration = 3000) {
-      this.copyNotification.textContent = value;
-      setTimeout(() => this.copyNotification.textContent = '', duration);
-    }
+		wrap(text, selection) {
+			// do not call this, call wrapAndSetOutput instead
 
-    loadLocalStorage() {
-      if (localStorage.getItem('data'))
-        try {
-          ({
-            width: this.width,
-            inputHistory: this.inputHistory,
-            inputHistoryIndex: this.inputHistoryIndex
-          } = JSON.parse(localStorage.getItem('data')));
-          this.wrapAndSetOutput(...this.inputHistory[this.inputHistoryIndex]);
-        } catch (e) {
-          console.error('unable to parse persisted input:', e);
-        }
-    }
+			let tokens = [];
+			let sections = text.split(/((?:^|\s+\n)\s*)/);
+			sections.forEach((section, i) => {
+				if (i % 2) {
+					tokens.push(new Token(Token.types.SECTION_BREAK, section));
+					return;
+				}
 
-    saveLocalStorage() {
-      localStorage.setItem('data', JSON.stringify({
-        width: this.width,
-        inputHistory: this.inputHistory,
-        inputHistoryIndex: this.inputHistoryIndex
-      }));
-    }
-  }
+				let bullets = section.split(/((?:^|\n)\s*(?:-|\d+(?:[).]|$))(?: +|$))/);
+				bullets.forEach((bullet, j) => {
+					if (j % 2) {
+						tokens.push(new Token(Token.types.BULLET, bullet));
+						return;
+					}
 
-  new ViewHandle();
+					let lines = bullet.split(/(\n\s*)/);
+					lines.forEach((line, k) => {
+						if (k % 2) {
+							tokens.push(new Token(Token.types.LINE_BREAK, line));
+							return;
+						}
+
+						let words = line.split(/(\s+)/);
+						words.forEach((word, l) => {
+							if (l % 2) {
+								tokens.push(new Token(Token.types.WORD_BREAK, word));
+								return;
+							}
+
+							tokens.push(new Token(Token.types.WORD, word));
+						});
+					});
+				});
+			});
+
+			let outText = '';
+			let consumedLength = 0;
+			let addText = (text, generatedChars = 0) => {
+				if (consumedLength < selection)
+					selection += generatedChars;
+				consumedLength += text.length + generatedChars;
+				outText += text;
+			};
+
+			let indent = 0;
+			let lastWordBreak = '';
+			tokens.forEach(token => {
+				switch (token.type) {
+					case Token.types.SECTION_BREAK:
+					case Token.types.BULLET:
+						indent = token.indent;
+						addText(token.value);
+						break;
+					case Token.types.LINE_BREAK:
+						lastWordBreak = ' ';
+						break;
+					case Token.types.WORD_BREAK:
+						lastWordBreak = token.value;
+						break;
+					case Token.types.WORD:
+						let lineLength = lastLineLength(outText);
+						if (!lineLength || lineLength + lastWordBreak.length + token.value.length <= this.width)
+							addText(lastWordBreak + token.value);
+						else
+							addText('\n' + ' '.repeat(indent) + lastWordBreak.slice(1) + token.value, indent);
+						lastWordBreak = '';
+						break;
+				}
+			});
+
+			return [outText, selection];
+		}
+
+		setOutput(text, selection) {
+// do not call this, call wrapAndSetOutput instead
+			this.input.value = text;
+			this.input.setSelectionRange(selection, selection);
+		}
+
+		undoHistory() {
+			this.inputHistoryIndex = Math.max(this.inputHistoryIndex - 1, 0);
+			this.wrapAndSetOutput(...this.inputHistory[this.inputHistoryIndex]);
+		}
+
+		redoHistory() {
+			this.inputHistoryIndex = Math.min(this.inputHistoryIndex + 1, this.inputHistory.length - 1);
+			this.wrapAndSetOutput(...this.inputHistory[this.inputHistoryIndex]);
+		}
+
+		addHistory(text, selection) {
+			const MAX_HISTORY_LENGTH = 300;
+			this.inputHistory[++this.inputHistoryIndex] = [text, selection];
+			this.inputHistory.splice(this.inputHistoryIndex + 1);
+			if (this.inputHistory.length > MAX_HISTORY_LENGTH) {
+				this.inputHistory = this.inputHistory.splice(this.inputHistory.length - MAX_HISTORY_LENGTH);
+				this.inputHistoryIndex = this.inputHistory.length - 1;
+			}
+		}
+
+		copyNotify(value, duration = 3000) {
+			this.copyNotification.textContent = value;
+			setTimeout(() => this.copyNotification.textContent = '', duration);
+		}
+
+		loadLocalStorage() {
+			if (localStorage.getItem('data'))
+				try {
+					({
+						width: this.width,
+						inputHistory: this.inputHistory,
+						inputHistoryIndex: this.inputHistoryIndex,
+					} = JSON.parse(localStorage.getItem('data')));
+					this.wrapAndSetOutput(...this.inputHistory[this.inputHistoryIndex]);
+				} catch (e) {
+					console.error('unable to parse persisted input:', e);
+				}
+		}
+
+		saveLocalStorage() {
+			localStorage.setItem('data', JSON.stringify({
+				width: this.width,
+				inputHistory: this.inputHistory,
+				inputHistoryIndex: this.inputHistoryIndex,
+			}));
+		}
+	}
+
+	new ViewHandle();
 
 </script>
