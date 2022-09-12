@@ -188,6 +188,7 @@
 			// do not call this, call wrapAndSetOutput instead
 
 			let tokens = [];
+			// let sections = text.split(/(^|\s+\n)/);
 			let sections = text.split(/((?:^|\s+\n)\s*)/);
 			sections.forEach((section, i) => {
 				if (i % 2) {
@@ -223,16 +224,18 @@
 			});
 
 			let outText = '';
+			let outSelection = 0;
 			let consumedLength = 0;
 			let addText = (text, generatedChars = 0) => {
 				if (consumedLength < selection)
-					selection += generatedChars;
-				consumedLength += text.length + generatedChars;
+					outSelection += Math.max(generatedChars, consumedLength - selection);
+				consumedLength += text.length - generatedChars;
 				outText += text;
 			};
 
 			let indent = 0;
 			let lastWordBreak = '';
+			let replacedLastWordBreak = '';
 			tokens.forEach(token => {
 				switch (token.type) {
 					case Token.types.SECTION_BREAK:
@@ -241,23 +244,31 @@
 						addText(token.value);
 						break;
 					case Token.types.LINE_BREAK:
-						lastWordBreak = ' ';
+						lastWordBreak = token.value.slice(indent + 1) || ' ';
+						replacedLastWordBreak = token.value;
 						break;
 					case Token.types.WORD_BREAK:
 						lastWordBreak = token.value;
+						replacedLastWordBreak = token.value;
 						break;
 					case Token.types.WORD:
 						let lineLength = lastLineLength(outText);
-						if (!lineLength || lineLength + lastWordBreak.length + token.value.length <= this.width)
-							addText(lastWordBreak + token.value);
-						else
-							addText('\n' + ' '.repeat(indent) + lastWordBreak.slice(1) + token.value, indent);
+						if (!lineLength || lineLength + lastWordBreak.length + token.value.length <= this.width) {
+							addText(lastWordBreak, lastWordBreak.length - replacedLastWordBreak.length);
+							addText(token.value);
+						} else {
+							addText('\n', 1);
+							addText(' '.repeat(indent), indent);
+							addText(lastWordBreak.slice(1), lastWordBreak.slice(1).length - replacedLastWordBreak.length);
+							addText(token.value);
+						}
 						lastWordBreak = '';
+						replacedLastWordBreak = '';
 						break;
 				}
 			});
 
-			return [outText, selection];
+			return [outText, selection + outSelection];
 		}
 
 		setOutput(text, selection) {
